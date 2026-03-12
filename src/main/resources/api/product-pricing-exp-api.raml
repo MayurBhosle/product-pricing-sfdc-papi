@@ -1,0 +1,72 @@
+#%RAML 1.0
+title: product-pricing-api
+version: v1
+mediaType: application/json
+protocols: [ HTTPS ]
+
+description: |
+  Experience API for managing Salesforce Product2 records with
+  currency conversion and pagination support.
+
+uses:
+  productType: types/productTypes.raml
+
+resourceTypes:
+  collection: !include resourceTypes/collection.raml
+  member: !include resourceTypes/member.raml
+
+traits:
+  pageable: !include traits/pageable.raml
+  currency: !include traits/currency.raml
+  invalidProductData: !include traits/invalidProductData.raml
+  productAlreadyExists: !include traits/productAlreadyExists.raml
+  productNotFound: !include traits/productNotFound.raml
+  immutableFieldUpdate: !include traits/immutableFieldUpdate.raml
+  currencyConversionFailed: !include traits/currencyConversionFailed.raml
+  downstreamErrors: !include traits/downstreamErrors.raml
+
+
+
+/products:
+
+  displayName: Products
+  type:
+    collection:
+      displayName: Product Collection
+      description: Create product and retrieve inventory.
+      postRequestType: productType.ProductRequest
+      postResponseType: productType.ProductResponse
+      getResponseType: productType.ProductListResponse
+      postExample: !include examples/productCreateRequest.json
+      getExample: !include examples/productListResponse.json
+  post:
+    description: Create a new product in Salesforce.
+    is: [invalidProductData, productAlreadyExists, downstreamErrors]
+
+  get:
+    description: Retrieve product inventory with optional currency conversion.
+    is: [ pageable, currency, invalidProductData, currencyConversionFailed, downstreamErrors]
+
+
+/products/{productId}:
+
+  displayName: Product By ID
+  uriParameters:
+    productId:
+      description: Unique Product Identifier (ExternalId in Salesforce).
+      type: productType.ProductId
+      example: P00000000001
+  type:
+    member:
+      description: Update or delete product by ID.
+      updateRequestType: productType.ProductUpdateRequest
+      responseType: productType.ProductResponse
+      updateExample: !include examples/productUpdateRequest.json
+      responseExample: !include examples/productResponse.json
+  put:
+    description: Update product details by Product ID.
+    is: [ invalidProductData, immutableFieldUpdate, productNotFound, downstreamErrors]
+
+  delete:
+    description: Delete product by Product ID.
+    is: [ productNotFound, downstreamErrors]

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
+	<salesforce:sfdc-config name="SFDC_Config" doc:name="Salesforce Config" doc:id="1af3e0a5-a453-47dc-af16-2f7e0ea7aa6e" >
+		<salesforce:basic-connection username="${secure::salesforce.username}" password="${secure::salesforce.password}" securityToken="${secure::salesforce.securityToken}" url="${secure::salesforce.authUrl}" />
+	</salesforce:sfdc-config>
+	<http:request-config name="CurrencyAPI" doc:name="HTTP Request config" doc:id="bdb7a8ce-df47-4f6f-995a-472bf170ee98" />
+	<os:config name="ObjectStore_Config" doc:name="ObjectStore Config" doc:id="c019621f-9c6d-4717-a341-9c9331350a39" >
+		<os:connection >
+			<reconnection >
+				<reconnect />
+			</reconnection>
+		</os:connection>
+	</os:config>
+	<http:request-config name="SFDC-SAPI" doc:name="HTTP Request config" doc:id="61ed2574-232c-416b-ab61-acbfb5730047" >
+		<http:request-connection protocol="HTTPS" host="${sapi.url}" port="${sapi.port}" />
+	</http:request-config>
+	<configuration doc:name="Configuration" doc:id="7354f967-8379-4d10-b4b0-d1a430a68bc6" defaultErrorHandler-ref="global-errorHandlerError_Handler" />
+	<configuration-properties doc:name="Configuration properties" doc:id="003e5434-1614-486a-9977-6fa0803874c0" file="properties\application-dev.yaml" />
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="a6fa1d8d-0c5b-4635-9a9f-39421c25f910" file="properties\application-dev.yaml" key="AIzaSyDaGmWKa4JsXZ-HjGw7ISLn_3na"/>
+</mule>

@@ -1,0 +1,15 @@
+http:
+  port: "8081"
+  timeOut: "7200"
+sapi:
+  url: "http://localhost:8081"
+  #url: "https://product-pricing-sfdc-sapi-hkufb9.5sc6y6-1.usa-e2.cloudhub.io"
+  port: "443"
+  responseTimeOut: "3600"
+
+salesforce:
+  username: "![RwzdtU5tKIN4+j3QwkBTm56SUW45Cvg4bKoWCDQ34ik=]"
+  password: "![KsDNtyUg77hDXoUJFhJw+vLVQaDe0VSWmkcKUJ3QM1Q=]"
+  securityToken: "![sri7XydCKFcYjgYP6JTgVowpAOI1MODT+DrvGkRG6Xo=]"
+  authUrl: "![fWChDmITN5MqN9Ry9ZoQQvThMa75wuT8cUg6ZGSaLDfQCpevBkU40jl39GczOwUCsl8EGuDE2RdRxb5p6DzU7Q==]"
+  

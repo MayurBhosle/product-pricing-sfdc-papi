@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="5fe64a3e-dc97-44c2-b76c-c073759cf702" entryTtl="1" entryTtlUnit="DAYS" config-ref="ObjectStore_Config" />
+	<flow name="get-products-flow">
+
+    <logger level="INFO" doc:name="Flow Start - Logger" doc:id="cb62ee0e-dd80-4a02-8a90-64363f347535" message='#["Request received to get all products from salesforce - " ++ correlationId]'/>
+		<ee:transform doc:name="Set variables - offset and limit" doc:id="45217cb4-35c4-4de2-86a9-5b54a6659c75" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="limit" ><![CDATA[attributes.queryParams.limit]]></ee:set-variable>
+				<ee:set-variable variableName="offset" ><![CDATA[attributes.queryParams.offset]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<set-variable variableName="requestedCurrency" value="#[attributes.queryParams.currency default 'USD']" doc:name="Set variable - requestedCurrency"/>
+
+    <!-- Fetch from Salesforce -->
+    <logger level="INFO" doc:name="Flow Process - Logger" doc:id="5dd9fccf-ddc5-4453-b3fc-eeb558d3d9a7" message='#["sending request to SAPI"]'/>
+		<http:request config-ref="SFDC-SAPI"
+                responseTimeout="${sapi.responseTimeOut}" sendCorrelationId="ALWAYS" correlationId="#[correlationId]" url="${sapi.url}/api/products">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	offset : vars.offset,
+	limit : vars.limit
+}]]]></http:query-params>
+		</http:request>
+		<set-variable variableName="sfProducts" value="#[payload]" doc:name="Set Variable - sfProducts"/>
+
+    <!-- If USD requested, no conversion needed -->
+    <choice>
+        <when expression="#[vars.requestedCurrency != 'USD']">
+
+            <!-- Call Currency SAPI -->
+            <os:retrieve doc:name="Retrieve currency rates" doc:id="c5cf248b-72e4-463c-a830-723d5fcf55a9" key="exchangeRates">
+					<os:default-value ><![CDATA[0]]></os:default-value>
+				</os:retrieve>
+
+            <!-- Convert all prices -->
+				<logger level="INFO" doc:name="Logger" doc:id="c744c872-bef7-49d1-a8a7-f7bb0b7e0cd3" message='#["Conversion rate retreived from object store - " ++ correlationId]'/>
+				<choice doc:name="Choice" doc:id="a3326a8c-8e2a-46e9-9dcf-708b494246fc" >
+					<when expression='#[payload == "0"]'>
+						<flow-ref doc:name="Calling Currency Conversion Flow" doc:id="613efb82-6131-42b3-9f07-0089212c6434" name="call_Currency_Conversion_API"/>
+						<set-variable value='#[%dw 2.0&#10;output application/java&#10;var requested = upper(read(vars.requestedCurrency) default "USD")&#10;---&#10;payload.rates[requested]]' doc:name="Set Variable - rate" doc:id="c4a6f5f2-6ce3-4c79-ace2-76345fa1675d" variableName="rate"/>
+						<ee:transform doc:name="Payload -Converted price payload" doc:id="247d1a15-6272-4e62-8083-4e91659a01da" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+var rate = (vars.rate as Number) default 1
+
+---
+
+(vars.sfProducts default []) map (item) -> 
+    item ++ {
+        ConvertedPrice:
+            if (upper(item.CurrencyCode__c default "USD") != "USD")
+                ((item.ProductPrice__c as Number default 0) * rate)
+            else
+                (item.ProductPrice__c as Number default 0)
+    }
+                       ]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<logger level="INFO" doc:name="Flow End - Logger" doc:id="8df53d83-ffef-45d5-89a4-b3fc64ff2fb8" message='#["Get All Products Flow - END" ++ correlationId]'/>
+					</when>
+					<otherwise >
+						<set-variable variableName="rate" value='#[%dw 2.0&#10;output application/java&#10;var requested = upper(read(vars.requestedCurrency) default "USD")&#10;---&#10;payload.rates[requested]]' doc:name="Set Variable - rate"/>
+						<ee:transform doc:name="Payload -Converted price payload">
+                <ee:message>
+                    <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+
+var rate = (vars.rate as Number) default 1
+
+---
+
+(vars.sfProducts default []) map (item) -> 
+    item ++ {
+        ConvertedPrice:
+            if (upper(item.CurrencyCode__c default "USD") != "USD")
+                ((item.ProductPrice__c as Number default 0) * rate)
+            else
+                (item.ProductPrice__c as Number default 0)
+    }
+                 ]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+            <logger level="INFO" doc:name="Flow End - Logger" doc:id="16e00735-1220-4b78-8a53-761374249288" message='#["Get All Products Flow - END" ++ correlationId]'/>
+					</otherwise>
+				</choice>
+
+        
+</when>
+
+        <otherwise>
+            <set-payload value="#[vars.sfProducts]" doc:name="Set Payload - sfProducts"/>
+        </otherwise>
+    </choice>
+
+</flow>
+	<sub-flow name="call_Currency_Conversion_API" doc:id="a0e37d6a-2828-4285-a8a9-6bbf7201e326" >
+		<logger level="INFO" doc:name="Start - Logger" doc:id="3ddf5237-1e0d-44c3-bde2-1e5940183673" message='#["Calling currency conversion API to get the latest conversion rates"]'/>
+		<http:request doc:name="Requesting currency conversion API" doc:id="4e7208fb-3654-437e-a1fe-edfdb35366ce" config-ref="CurrencyAPI" url="https://currency-exchange-api-v1-esulbe.5sc6y6-3.usa-e2.cloudhub.io/exchange" />
+		<logger level="INFO" doc:name="Logger" doc:id="9a090f23-0d75-4674-bd5a-1ca0aa55f297" message='#["Retreived conversion rate from currency conversion rate."]'/>
+		<os:store doc:name="Storing conversion rates" doc:id="22b7d18c-614d-4c79-bfad-77d780f74285" key="exchangeRates" objectStore="Object_store"/>
+		<logger level="INFO" doc:name="End - Logger" doc:id="d72ec549-9351-4494-9303-87901a2e1e6f" message='#["Conversion rates stored in object store"]'/>
+	</sub-flow>
+	<sub-flow name="post-Product-Flow" doc:id="6094dc5a-2b60-4a29-8944-86edb6091919" >
+		<http:request doc:name="Request" doc:id="9fea20ab-9909-4843-b855-b77c95d68833" method="POST" url="${sapi.url}/api/products" responseTimeout="${sapi.responseTimeOut}" sendCorrelationId="ALWAYS" correlationId="#[correlationId]" config-ref="SFDC-SAPI"/>
+	</sub-flow>
+	<sub-flow name="get-ProductById-Flow" doc:id="342858b9-b7fa-4d3b-af01-75aed1087f54" >
+		<http:request doc:name="Request" doc:id="07496f63-c66e-44d0-84e7-fe643423302f" config-ref="SFDC-SAPI" url="${sapi.url}/api/products/{productId}" sendBodyMode="ALWAYS" responseTimeout="${sapi.responseTimeOut}" sendCorrelationId="ALWAYS" correlationId="#[correlationId]">
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	productId : attributes.uriParams.productId
+}]]]></http:uri-params>
+		</http:request>
+	</sub-flow>
+	<sub-flow name="update-ProductById-flow" doc:id="a65af9cb-6929-4a26-859f-780a895c74af" >
+		<http:request doc:name="Request" doc:id="682fb137-77ef-49f6-9e10-cae3ed798ed6" method="PUT" url="${sapi.url}/api/products/{productId}" responseTimeout="${sapi.responseTimeOut}" sendCorrelationId="ALWAYS" correlationId="#[correlationId]" config-ref="SFDC-SAPI">
+			<http:uri-params><![CDATA[#[{
+	productId: attributes.uriParams.productId
+}]]]></http:uri-params>
+		</http:request>
+	</sub-flow>
+	<sub-flow name="delete-ProductById-Flow" doc:id="ffed8be8-e960-44a2-8e37-cc70433048b8" >
+		<http:request doc:name="Request" doc:id="5f20045d-35ca-4a63-8eb6-8920faf218d8" method="DELETE" url="${sapi.url}/api/products/{productId}" responseTimeout="${sapi.responseTimeOut}" sendCorrelationId="ALWAYS" correlationId="#[correlationId]" config-ref="SFDC-SAPI">
+			<http:uri-params ><![CDATA[#[{
+	productId: attributes.uriParams.productId
+}]]]></http:uri-params>
+		</http:request>
+	</sub-flow>
+	
+</mule>

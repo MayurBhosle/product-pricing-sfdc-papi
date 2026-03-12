@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_a0e37d6a_2828_4285_a8a9_6bbf7201e326_Input_Variables_requestedCurrency = Any
+

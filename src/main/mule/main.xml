@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd ">
+    <http:listener-config name="sf-sys-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="${http.port}" />
+    </http:listener-config>
+    <apikit:config name="sf-sys-api-config" api="api\sf-sys-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="sf-sys-api-main">
+        <http:listener config-ref="sf-sys-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="sf-sys-api-config" />
+        <error-handler ref="global-errorHandlerError_Handler">
+            
+        </error-handler>
+    </flow>
+    <flow name="sf-sys-api-console">
+        <http:listener config-ref="sf-sys-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="sf-sys-api-config" />
+        <error-handler ref="global-errorHandlerError_Handler">
+           
+        </error-handler>
+    </flow>
+    <flow name="put:\products\(productId):application\json:sf-sys-api-config" doc:id="736fb1db-ae83-4a65-8cab-508fd3a0bd0a">
+		<logger level="INFO" doc:name="Logger" doc:id="ae6b517f-02c5-4324-9ad0-efc39196bc9f" message='#["Started update products by Id - PAPI - " ++ correlationId]'/>
+		<flow-ref doc:name="Flow Reference" doc:id="d7e67782-5875-41d4-abc0-4315fe6c034d" name="update-ProductById-flow"/>
+		<logger level="INFO" doc:name="Logger" doc:id="0a18ebb4-85c2-4d58-befc-d4cccd99ab3e" message='#["Ended update products by Id - PAPI- " ++ correlationId]'/>
+		<error-handler ref="global-errorHandlerError_Handler" />
+    </flow>
+    <flow name="delete:\products\(productId):sf-sys-api-config">
+		<logger level="INFO" doc:name="Logger" doc:id="31bc4f0b-4085-4d79-97f6-ab1ed1d7924f" message='#["Started delete products by Id - PAPI"]' />
+		<flow-ref doc:name="Flow Reference" doc:id="243d73c1-1635-49dd-a7ff-abab3ab70402" name="delete-ProductById-Flow"/>
+		<logger level="INFO" doc:name="Logger" doc:id="19c3689e-e0e2-4e7e-8ef7-7272f6e5e7d9" message='#["Started delete products by Id - PAPI"]' />
+		<error-handler ref="global-errorHandlerError_Handler" />
+    </flow>
+    <flow name="get:\products:sf-sys-api-config">
+        <logger level="INFO" doc:name="Logger" doc:id="cd6ac565-2754-4dce-ad29-2cd69f7cca5b" message='#["Started get all products - PAPI"]' />
+		<flow-ref doc:name="Flow Reference" doc:id="54a9043a-7920-4e3a-8f41-023f4743368e" name="get-products-flow"/>
+		<ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="942700d4-df86-4415-9f6f-96e6ad00a946" message='#["Ended get all products - PAPI"]' />
+		<error-handler ref="global-errorHandlerError_Handler" />
+    </flow>
+    <flow name="get:\products\(productId):sf-sys-api-config">
+		<logger level="INFO" doc:name="Logger" doc:id="5aeffe7d-61e6-41e4-89ce-885a4b88c6f4" message='#["Started get products by Id - PAPI"]' />
+		<flow-ref doc:name="Flow Reference" doc:id="081cb3df-5ddb-44b4-b9e9-cf1cdab61db4" name="get-ProductById-Flow"/>
+		<logger level="INFO" doc:name="Logger" doc:id="50727ace-a644-47d5-96a9-b934e77ddc0b" message='#["Ended get products by Id - PAPI"]' />
+		<error-handler ref="global-errorHandlerError_Handler" />
+    </flow>
+    <flow name="post:\products:application\json:sf-sys-api-config">
+		<logger level="INFO" doc:name="Logger" doc:id="fc144fd8-56de-4eb7-93b6-b6046c4eec25" message='#["Started create products - PAPI"]' />
+		<flow-ref doc:name="Flow Reference" doc:id="4d4053d6-6228-4080-a382-81f83890be51" name="post-Product-Flow"/>
+		<logger level="INFO" doc:name="Logger" doc:id="ff88a6ff-1577-4c5b-b9db-ec9f85f45f8f" message='#["Ended create products - PAPI"]' />
+		<error-handler ref="global-errorHandlerError_Handler" />
+    </flow>
+</mule>
